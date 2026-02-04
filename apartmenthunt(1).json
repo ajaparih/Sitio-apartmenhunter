@@ -1,0 +1,212 @@
+{
+  "name": "apartmenthunt",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.message}}",
+        "options": {
+          "systemMessage": "# ROLE                                                                                                                                                                              \n  You are a Real Estate & Relocation Assistant. You find housing and verify commutes using Jina Reader and BVG transit tools.                                                         \n                                                                                                                                                                                      \n  # PHASE 1: INFO GATHERING                                                                                                                                                           \n  Ask one question at a time:                                                                                                                                                         \n  1. City (which city in Germany?)                                                                                                                                                    \n  2. Age                                                                                                                                                                              \n  3. Lifestyle (student, young professional, family, retiree)                                                                                                                         \n  4. Do you have kids? How many and what ages?                                                                                                                                        \n  5. Work address (full address with street and number)                                                                                                                               \n  6. Maximum monthly rent in euros                                                                                                                                                    \n                                                                                                                                                                                      \n  # PHASE 2: DETERMINE NEEDS                                                                                                                                                          \n  Based on their answers, determine:                                                                                                                                                  \n  - Property type: 1-room (single/student), 2-room (couple), 3-room (small family), 4-room (large family)                                                                             \n  - Priority amenities: schools and parks (families), nightlife and cafes (young professionals), quiet areas (retirees)                                                               \n  - Transport priority: S-Bahn or Regional train for faster commutes                                                                                                                  \n                                                                                                                                                                                      \n  Recommend 2-3 Berlin neighborhoods that have S-Bahn/Regional stations AND the right amenities.                                                                                      \n                                                                                                                                                                                      \n  Then pick THE BEST ONE to search (the one with fastest S-Bahn connection).                                                                                                          \n                                                                                                                                                                                      \n  # PHASE 3: SEARCH APARTMENTS                                                                                                                                                        \n  Search ONLY the best neighborhood you recommended.                                                                                                                                  \n                                                                                                                                                                                      \n  1. Construct Immowelt search URL in this EXACT format:                                                                                                                              \n     https://www.immowelt.de/liste/berlin/wohnungen/mieten?price=0-MAXRENT                                                                                                            \n                                                                                                                                                                                      \n     Example for max rent 1200:                                                                                                                                                       \n     https://www.immowelt.de/liste/berlin/wohnungen/mieten?price=0-1200                                                                                                               \n                                                                                                                                                                                      \n  2. Call jina_reader tool with url parameter set to the Immowelt URL                                                                                                                 \n                                                                                                                                                                                      \n  3. From the jina_reader response, extract ONLY 2 apartment listing URLs (pick the best 2)                                                                                           \n                                                                                                                                                                                      \n  4. For EACH of the 2 listing URLs:                                                                                                                                                  \n     a. Call jina_reader tool with that listing URL                                                                                                                                   \n     b. Extract the exact street address (Strasse + Hausnummer)                                                                                                                       \n     c. Call BVG tool with: from_address=<apartment address>, to_address=<user work address>                                                                                          \n     d. BVG returns commute time and route                                                                                                                                            \n                                                                                                                                                                                      \n  # PHASE 4: PRESENT RESULTS                                                                                                                                                          \n  For each apartment found, show:                                                                                                                                                     \n                                                                                                                                                                                      \n  Property: [title]                                                                                                                                                                   \n  Rent: €[amount]                                                                                                                                                                     \n  Address: [exact street address]                                                                                                                                                     \n  Neighborhood: [name]                                                                                                                                                                \n  Commute: [time and route from BVG]                                                                                                                                                  \n  Why this location: [S-Bahn access + amenities matching their profile]                                                                                                               \n  Link: [listing URL]                                                                                                                                                                 \n                                                                                                                                                                                      \n  Also mention the other neighborhoods you considered as alternatives.                                                                                                                \n                                                                                                                                                                                      \n  # CRITICAL RULES                                                                                                                                                                    \n  - Search ONLY ONE neighborhood                                                                                                                                                      \n  - Extract ONLY 2 listings maximum (to stay fast)                                                                                                                                    \n  - You MUST call jina_reader to browse Immowelt                                                                                                                                      \n  - NEVER tell user to browse themselves                                                                                                                                              \n  - Always complete all steps: search, extract, calculate commute                                                                                                                     \n  - Plain text only, no markdown bold, no emojis                                                                                                                                      \n  - If jina_reader fails, try a simpler URL or report the error "
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        416,
+        320
+      ],
+      "id": "110d70bb-9a0f-4f8c-9284-15ea30623f88",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "endpointUrl": "https://berlin-transport.mcp-tools.app/sse",
+        "serverTransport": "sse",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.2,
+      "position": [
+        656,
+        624
+      ],
+      "id": "aa089aff-b775-41bc-8da7-e4a64c1e4cf0",
+      "name": "MCP Client"
+    },
+    {
+      "parameters": {
+        "toolDescription": "\"Reads a URL and returns clean text. Use this to get the specific address from an Immoscout or Immowelt link.\"",
+        "url": "=https://r.jina.ai/{{$fromAI(\"url\") }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        784,
+        624
+      ],
+      "id": "41a07aba-33e4-43bc-aef3-50d205f75f8f",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        256,
+        624
+      ],
+      "id": "27ab5816-c35a-413e-9234-f48dc0e457a5",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "rWNdY4Jhj1jKFvPW",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.sessionId}}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        432,
+        528
+      ],
+      "id": "a5797232-b466-4c51-a6ae-6fba0880623f",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "apartmenthunt",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -48,
+        352
+      ],
+      "id": "4f3dc01d-b08d-4522-b044-0099d42edcf3",
+      "name": "Webhook",
+      "webhookId": "045421f3-f54e-4c16-9841-8f7713e353ce",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "R6ki5Lx6uRWafGmd",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('AI Agent').item.json.output.replace(/\\*\\*(.*?)\\*\\*/g, '$1').replace(/\\\\n/g, '\\n') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        768,
+        336
+      ],
+      "id": "6d651836-c2bc-4981-997c-e6adef94151d",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "MCP Client": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "033fb90a-bfbb-4cfc-9d88-e4032848a6f6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "632ecd716ac8cbb6ef9d19086788ad6f45a30ab983d6322a9111c2b3f8634ed0"
+  },
+  "id": "YQw5-Kh2KGcVztQva5CLR",
+  "tags": []
+}
